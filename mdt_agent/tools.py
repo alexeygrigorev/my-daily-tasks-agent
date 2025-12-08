@@ -154,31 +154,50 @@ class TodoTools:
 
         return None
 
-    def get_todos(self, due_date: Optional[str] = None, tag: Optional[str] = None):
+    def get_todos(
+        self,
+        due_date: Optional[str] = None,
+        tag: Optional[str] = None,
+        completed: Optional[bool] = False
+    ):
         """
-        Retrieve todos, optionally filtering by due date or tag.
+        Retrieve todos, optionally filtering by due date, tag, and completion status.
 
         Args:
             due_date:
-                - ISO-8601 string (e.g. "2025-01-10T12:00:00")
-                - OR a shortcut string:
-                    "today", "tomorrow", "this_week", "next_week"
-            tag: A tag name to filter by.
+                - ISO-8601 date/time string
+                - OR shortcut string: "today", "tomorrow", "this_week", "next_week"
+            tag:
+                A tag name to filter by.
+            completed:
+                Completion filter:
+                    False (default) → return only incomplete todos
+                    True            → return only completed todos
+                    None            → return all todos
 
         Returns:
-            A list of todos matching the filters.
+            A list of todos matching all provided filters.
         """
         url = f"{self.base_url}/api/todos"
         params = {}
 
+        # Due date filtering (shortcut or literal)
         if due_date:
-            # Try shortcut conversion; fall back to raw string
             shortcut_value = self._resolve_due_shortcut(due_date)
             params["dueBefore"] = shortcut_value or due_date
 
+        # Tag filter
         if tag:
             params["tags"] = tag
 
         resp = requests.get(url, params=params)
         resp.raise_for_status()
-        return resp.json()
+        todos = resp.json()
+
+        # Client-side completion filtering
+        if completed is True:
+            return [t for t in todos if t["completed"]]
+        elif completed is False:
+            return [t for t in todos if not t["completed"]]
+        else:
+            return todos
