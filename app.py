@@ -22,7 +22,7 @@ st.set_page_config(page_title="My Daily Tasks Agent", page_icon=":spiral_note_pa
 
 
 class ToolLogCollector:
-    """Collect tool call data so it can be rendered in the UI later."""
+    """Collect tool call data so it can be rendered in the chat stream."""
 
     def __init__(self, agent_name: str):
         self.agent_name = agent_name
@@ -50,13 +50,11 @@ def init_session_state() -> None:
     state.setdefault("model_input", state["model_name"])
     state.setdefault("agent_messages", [])
     state.setdefault("chat_history", [])
-    state.setdefault("tool_logs", [])
 
 
 def reset_conversation() -> None:
     st.session_state.agent_messages = []
     st.session_state.chat_history = []
-    st.session_state.tool_logs = []
 
 
 def build_runner() -> TodoAgentRunner:
@@ -67,7 +65,7 @@ def build_runner() -> TodoAgentRunner:
     return TodoAgentRunner(config)
 
 
-def run_agent(prompt: str, runner: TodoAgentRunner) -> str:
+def run_agent(prompt: str, runner: TodoAgentRunner) -> tuple[str, List[str]]:
     logger = ToolLogCollector(runner.agent.name)
     result = asyncio.run(
         runner.agent.run(
@@ -77,13 +75,7 @@ def run_agent(prompt: str, runner: TodoAgentRunner) -> str:
         )
     )
     st.session_state.agent_messages.extend(result.new_messages())
-    st.session_state.tool_logs.append(
-        {
-            "prompt": prompt,
-            "entries": logger.records.copy(),
-        }
-    )
-    return str(result.output)
+    return str(result.output), logger.records.copy()
 
 
 def handle_user_prompt(prompt: str, runner: TodoAgentRunner) -> None:
@@ -95,36 +87,17 @@ def handle_user_prompt(prompt: str, runner: TodoAgentRunner) -> None:
     st.session_state.chat_history.append({"role": "user", "content": clean_prompt})
 
     try:
-        response = run_agent(clean_prompt, runner)
+        response, tool_logs = run_agent(clean_prompt, runner)
     except Exception as exc:  # noqa: BLE001
         error_text = f"Unable to fulfill the request: {exc}"
         st.session_state.chat_history.append({"role": "assistant", "content": error_text})
-        st.session_state.tool_logs.append(
-            {
-                "prompt": clean_prompt,
-                "entries": [error_text],
-            }
-        )
         st.error(error_text)
         return
 
+    for log in tool_logs:
+        st.session_state.chat_history.append({"role": "tool", "content": log})
+
     st.session_state.chat_history.append({"role": "assistant", "content": response})
-
-
-def render_tool_logs() -> None:
-    with st.expander("Tool activity", expanded=False):
-        if not st.session_state.tool_logs:
-            st.caption("Tool calls will appear here once you send a prompt.")
-            return
-
-        for idx, entry in enumerate(st.session_state.tool_logs, start=1):
-            st.markdown(f"**Prompt {idx}:** {entry['prompt']}")
-            if entry["entries"]:
-                for log in entry["entries"]:
-                    st.code(log, language="text")
-            else:
-                st.caption("No tool calls for this prompt.")
-            st.divider()
 
 
 def main() -> None:
@@ -157,15 +130,18 @@ def main() -> None:
         st.info("Start the conversation with the input box below.")
     else:
         for message in st.session_state.chat_history:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+            role = message.get("role", "assistant")
+            display_role = "assistant" if role == "tool" else role
+            with st.chat_message(display_role):
+                if role == "tool":
+                    st.code(message["content"], language="text")
+                else:
+                    st.markdown(message["content"])
 
     user_prompt = st.chat_input("Ask about your todos")
     if user_prompt is not None:
         handle_user_prompt(user_prompt, runner)
         st.rerun()
-
-    render_tool_logs()
 
 
 if __name__ == "__main__":

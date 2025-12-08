@@ -1,4 +1,5 @@
 import inspect
+import textwrap
 from dataclasses import dataclass, field
 from typing import Any, List, Optional, Sequence
 
@@ -9,13 +10,19 @@ from mdt_agent import tools
 
 
 def _default_instructions() -> str:
-    return (
-        "You're a helpful todo agent\n\n"
-        "format for displaying todos:\n\n"
-        "- \"<NAME>\" due to <DUE_DATE> (tag1, tag2...)\n\n"
-        "show all the todos returned by the API\n\n"
-        "if due date or tags are not present, don't display them"
-    )
+    return textwrap.dedent(
+        """
+        You're a helpful todo agent
+
+        format for displaying todos:
+
+        - "<NAME>" due to <DUE_DATE> (tag1, tag2...)
+
+        show all the todos returned by the API
+
+        if due date or tags are not present, don't display them
+        """
+    ).strip()
 
 
 def _get_public_instance_methods(instance: object) -> List[Any]:
