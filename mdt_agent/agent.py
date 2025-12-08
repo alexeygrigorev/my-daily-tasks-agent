@@ -36,7 +36,6 @@ def _get_public_instance_methods(instance: object) -> List[Any]:
 
 @dataclass
 class TodoAgentConfig:
-    base_url: str
     model: str = "openai:gpt-4o-mini"
     name: str = "todo"
     instructions: str = field(default_factory=_default_instructions)
@@ -67,9 +66,9 @@ class NamedCallback:
 class TodoAgentRunner:
     """Builds and executes the todo agent without relying on module globals."""
 
-    def __init__(self, config: TodoAgentConfig):
+    def __init__(self, config: TodoAgentConfig, todo_tools: tools.TodoTools):
         self._config = config
-        self._todo_tools = tools.TodoTools(base_url=config.base_url)
+        self._todo_tools = todo_tools
         self._agent = Agent(
             name=config.name,
             instructions=config.instructions,

@@ -59,10 +59,11 @@ def reset_conversation() -> None:
 
 def build_runner() -> TodoAgentRunner:
     config = TodoAgentConfig(
-        base_url=st.session_state.base_url,
         model=st.session_state.model_name,
     )
-    return TodoAgentRunner(config)
+    base_url = st.session_state.base_url
+    tools = tools.TodoTools(base_url=base_url)
+    return TodoAgentRunner(config, todo_tools=tools)
 
 
 def run_agent(prompt: str, runner: TodoAgentRunner) -> tuple[str, List[str]]:
