@@ -1,17 +1,11 @@
-"""In-memory TodoTools replacement for tests.
-
-The production tools talk to the HTTP API; the mock keeps a local list of
-todos so the agent can be exercised without network access.
-"""
-
 from copy import deepcopy
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
+from mdt_agent.tools import TodoTools
+
 
 class MockTodoTools:
-    """Drop-in TodoTools replacement that stores todos in memory."""
-
     def __init__(self, *, todos: Optional[List[Dict[str, object]]] = None):
         self.base_url = "mock://todos"
         self._todos: Dict[str, Dict[str, object]] = {
@@ -54,6 +48,7 @@ class MockTodoTools:
         title: Optional[str] = None,
         due_date: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        completed: Optional[bool] = None,
     ):
         todo = self._todos.get(todo_id)
         if todo is None:
@@ -65,6 +60,8 @@ class MockTodoTools:
             todo["dueDate"] = due_date
         if tags is not None:
             todo["tags"] = list(tags)
+        if completed is not None:
+            todo["completed"] = completed
 
         return self._clone(todo)
 
@@ -154,6 +151,29 @@ class MockTodoTools:
             todos = [todo for todo in todos if not todo.get("completed")]
 
         return [self._clone(todo) for todo in todos]
+
+
+def _copy_docstrings():
+    def _maybe_copy(src, dest):
+        doc = getattr(src, "__doc__", None)
+        if doc:
+            dest.__doc__ = doc
+
+    _maybe_copy(TodoTools, MockTodoTools)
+    _maybe_copy(TodoTools.__init__, MockTodoTools.__init__)
+
+    for name in [
+        "create_todo",
+        "update_todo",
+        "mark_completed",
+        "get_incomplete_todos",
+        "_resolve_due_shortcut",
+        "get_todos",
+    ]:
+        _maybe_copy(getattr(TodoTools, name), getattr(MockTodoTools, name))
+
+
+_copy_docstrings()
 
 
 __all__ = ["MockTodoTools"]
