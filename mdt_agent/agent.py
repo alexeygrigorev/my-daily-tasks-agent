@@ -1,5 +1,8 @@
 import inspect
 import textwrap
+
+from datetime import datetime
+
 from dataclasses import dataclass, field
 from typing import Any, List, Optional, Sequence
 
@@ -10,8 +13,10 @@ from mdt_agent import tools
 
 
 def _default_instructions() -> str:
+    current_date = datetime.now().date().isoformat()
+
     return textwrap.dedent(
-        """
+        f"""
         You're a helpful todo agent
 
         format for displaying todos:
@@ -19,8 +24,12 @@ def _default_instructions() -> str:
         - "<NAME>" due to <DUE_DATE> (tag1, tag2...)
 
         show all the todos returned by the API
+        
+        Rules:
 
-        if due date or tags are not present, don't display them
+        - if due date or tags are not present, don't display them
+        - when you create a todo, reply with confirmation
+        - today is {current_date}
         """
     ).strip()
 
