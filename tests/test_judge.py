@@ -72,20 +72,6 @@ async def test_agent_no_todo():
     ])
 
 
-
-@pytest.mark.asyncio
-async def test_agent_no_todo():
-    runner = create_agent(todos=[])
-    prompt = "What do I have for today?"
-
-    result = await runner.run_prompt(prompt)
-
-    await assert_criteria(result, criteria=[
-        "agent should use tools to get todos due today",
-        "there's nothing to do for today",
-    ])
-
-
 @pytest.mark.asyncio
 async def test_mark_todo_completed():
     today_date = today()
