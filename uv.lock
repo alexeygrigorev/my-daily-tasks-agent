@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1829,6 +1829,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "genai-prices" },
+    { name = "logfire" },
     { name = "pydantic-ai" },
     { name = "python-dotenv" },
     { name = "streamlit" },
@@ -1844,6 +1845,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "genai-prices", specifier = ">=0.0.47" },
+    { name = "logfire", specifier = ">=4.16.0" },
     { name = "pydantic-ai", specifier = ">=1.27.0" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "streamlit", specifier = ">=1.52.1" },

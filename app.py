@@ -1,19 +1,25 @@
-"""Streamlit interface for chatting with the todo agent."""
-
-from __future__ import annotations
-
-import asyncio
-import json
 import os
+import json
+import asyncio
+
 from typing import Any, List
 
+import dotenv
+import logfire
 import streamlit as st
-from dotenv import load_dotenv
+
 from pydantic_ai.messages import FunctionToolCallEvent
 
 from mdt_agent.agent import TodoAgentConfig, TodoAgentRunner
+from mdt_agent.tools import TodoTools
 
-load_dotenv()
+
+dotenv.load_dotenv()
+
+logfire.configure()
+logfire.instrument_pydantic_ai()
+
+
 
 DEFAULT_BASE_URL = os.getenv("MY_DAILY_TASKS_URL", "http://localhost:3000")
 DEFAULT_MODEL = os.getenv("MY_DAILY_TASKS_MODEL", "openai:gpt-4o-mini")
@@ -55,6 +61,8 @@ def init_session_state() -> None:
 def reset_conversation() -> None:
     st.session_state.agent_messages = []
     st.session_state.chat_history = []
+    if "logfire_context" in st.session_state:
+        del st.session_state.logfire_context
 
 
 def build_runner() -> TodoAgentRunner:
@@ -62,19 +70,26 @@ def build_runner() -> TodoAgentRunner:
         model=st.session_state.model_name,
     )
     base_url = st.session_state.base_url
-    tools = tools.TodoTools(base_url=base_url)
+    tools = TodoTools(base_url=base_url)
     return TodoAgentRunner(config, todo_tools=tools)
 
 
 def run_agent(prompt: str, runner: TodoAgentRunner) -> tuple[str, List[str]]:
     logger = ToolLogCollector(runner.agent.name)
-    result = asyncio.run(
-        runner.agent.run(
-            prompt,
-            message_history=st.session_state.agent_messages,
-            event_stream_handler=logger,
+
+    if "logfire_context" not in st.session_state:
+        with logfire.span('streamlit_session'):
+            st.session_state.logfire_context = logfire.get_context()
+
+    with logfire.attach_context(st.session_state.logfire_context):
+        result = asyncio.run(
+            runner.agent.run(
+                prompt,
+                message_history=st.session_state.agent_messages,
+                event_stream_handler=logger,
+            )
         )
-    )
+
     st.session_state.agent_messages.extend(result.new_messages())
     return str(result.output), logger.records.copy()
 
